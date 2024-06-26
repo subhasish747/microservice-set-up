@@ -2,30 +2,40 @@ version: '3.8'
 
 services:
   kafka:
-    image: confluentinc/confluent-local:7.4.1
-    hostname: broker
-    container_name: broker
+    restart: always
+    image: docker.io/bitnami/kafka:3.3
+    volumes:
+      - ./.volumes/kafka/data:/bitnami"
     ports:
-      - "8082:8082"
-      - "9092:9092"
-      - "9101:9101"
+      - 9092:9092
+      - 9093:9093
+    container_name: broker1
     environment:
-      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://broker:29092,PLAINTEXT_HOST://localhost:9092'
-      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@broker:29093'
-      KAFKA_LISTENERS: 'PLAINTEXT://broker:29092,CONTROLLER://broker:29093,PLAINTEXT_HOST://0.0.0.0:9092'
+      KAFKA_ENABLE_KRAFT: "true"
+      KAFKA_CFG_NODE_ID: 1
+      KAFKA_CFG_PROCESS_ROLES: 'broker,controller'
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://broker1:9092
+      KAFKA_CFG_BROKER_ID: 1
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: '1@broker1:9093'
+      ALLOW_PLAINTEXT_LISTENER: "true"
+      KAFKA_KRAFT_CLUSTER_ID: r4zt_wrqTRuT7W2NJsB_GA
+
     networks:
       - kafka-net
 
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     ports:
-      - 9999:9999
+      - 9999:8080
     environment:
       DYNAMIC_CONFIG_ENABLED: "true"
       KAFKA_CLUSTERS_0_NAME: local
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: broker:29092
-    networks:
-      - kafka-net
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: broker1:9092
+
 
   schema-registry:
     image: confluentinc/cp-schema-registry:latest
@@ -34,7 +44,7 @@ services:
       - "8081:8081"
     environment:
       SCHEMA_REGISTRY_HOST_NAME: schema-registry
-      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka:9092
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://broker1:9092
       SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
     depends_on:
       - kafka
